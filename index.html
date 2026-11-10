@@ -1,0 +1,1131 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0f172a">
+<title>Авито Перекуп — Симулятор</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+body { font-family: 'Inter', sans-serif; background-color: #090d16; color: #f8fafc; user-select: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+@keyframes pulseGlow { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.88; transform: scale(1.01); } }
+.live-card { animation: pulseGlow 4s infinite ease-in-out; }
+</style>
+</head>
+<body class="bg-[#090d16] text-slate-100 flex flex-col h-screen overflow-hidden">
+<header class="bg-slate-900 border-b border-slate-800 px-3 py-2 flex justify-between items-center z-20 shrink-0 shadow-md gap-1">
+ <div onclick="requestAdminPassword()" class="flex flex-col shrink-0 cursor-pointer active:scale-95 transition" title="Админка">
+  <div class="bg-[#00AAFF] text-slate-950 font-black px-2 py-0.5 rounded text-[10px] tracking-wide inline-block w-fit shadow-sm">AVITO</div>
+  <span class="font-extrabold tracking-wider text-[9px] text-slate-300 mt-0.5">ПЕРЕКУП ⚙️</span>
+ </div>
+
+ <div class="bg-slate-800/90 px-2.5 py-1 rounded-xl border border-slate-700 flex items-center space-x-1.5 shrink-0 shadow-inner">
+  <span class="text-[9px] text-slate-400">Баланс:</span>
+  <span id="header-balance" class="font-bold text-[#34d399] text-[11px]">10 000 ₽</span>
+ </div>
+
+ <div class="flex items-center space-x-1.5 shrink-0">
+  <div class="bg-slate-800/90 px-2 py-0.5 rounded-xl border border-slate-700 text-center">
+   <div id="header-time" class="font-bold text-amber-400 text-[11px] leading-tight">08:00</div>
+   <div id="header-day" class="text-[9px] text-slate-400 leading-tight">День 1</div>
+  </div>
+  <button id="night-btn" onclick="skipNight()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-xl transition shadow-lg shadow-indigo-600/30 animate-bounce hidden">🌙 Ночь</button>
+ </div>
+</header>
+
+<main class="flex-1 overflow-y-auto pb-44 px-4 pt-3 max-w-xl mx-auto w-full hide-scrollbar">
+ <section id="tab-search" class="space-y-3">
+  <div class="flex justify-between items-center mb-1">
+   <h1 class="text-base font-extrabold flex items-center gap-1.5">🔥 Лента объявлений <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span></h1>
+   <button onclick="refreshFeed()" class="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded-xl border border-slate-700 transition font-medium active:scale-95">🔄 Обновить</button>
+  </div>
+  
+  <div class="space-y-2 bg-slate-900 border border-slate-800 p-2.5 rounded-2xl shadow-sm">
+   <div class="flex gap-1 overflow-x-auto hide-scrollbar pb-1" id="category-chips">
+    <button onclick="setCategory('all')" class="cat-btn bg-[#00AAFF] text-slate-950 font-bold text-[11px] px-3 py-1.5 rounded-xl whitespace-nowrap transition shadow-sm">Все</button>
+    <button onclick="setCategory('trash')" class="cat-btn bg-slate-800 text-slate-300 text-[11px] px-3 py-1.5 rounded-xl whitespace-nowrap transition">Хлам и Мелочь</button>
+    <button onclick="setCategory('gadgets')" class="cat-btn bg-slate-800 text-slate-300 text-[11px] px-3 py-1.5 rounded-xl whitespace-nowrap transition">Телефоны и ПК</button>
+    <button onclick="setCategory('transport')" class="cat-btn bg-slate-800 text-slate-300 text-[11px] px-3 py-1.5 rounded-xl whitespace-nowrap transition">Авто и Мото</button>
+    <button onclick="setCategory('realty')" class="cat-btn bg-slate-800 text-slate-300 text-[11px] px-3 py-1.5 rounded-xl whitespace-nowrap transition">Недвижимость</button>
+    <button onclick="setCategory('luxury')" class="cat-btn bg-slate-800 text-slate-300 text-[11px] px-3 py-1.5 rounded-xl whitespace-nowrap transition">Люкс и Яхты</button>
+   </div>
+   <div class="flex items-center gap-2 text-xs pt-1 border-t border-slate-800/80">
+    <span class="text-slate-400 text-[11px]">Цена от:</span>
+    <input type="number" id="filter-min" placeholder="0" oninput="applyFilters()" class="w-20 bg-slate-800 border border-slate-700 px-2 py-1 rounded-lg text-white text-xs">
+    <span class="text-slate-400 text-[11px]">до:</span>
+    <input type="number" id="filter-max" placeholder="∞" oninput="applyFilters()" class="w-20 bg-slate-800 border border-slate-700 px-2 py-1 rounded-lg text-white text-xs">
+    <button onclick="resetFilters()" class="bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded-lg text-slate-300 text-[11px]">Сброс</button>
+   </div>
+  </div>
+
+  <div id="feed-list" class="space-y-3"></div>
+ </section>
+
+ <section id="tab-inventory" class="space-y-3 hidden">
+  <div class="flex justify-between items-center mb-1">
+   <h1 class="text-base font-extrabold">Мой склад (<span id="inv-count">0</span>/<span id="inv-max">5</span>)</h1>
+   <button onclick="upgradeWarehouse()" class="bg-emerald-600 hover:bg-emerald-500 text-xs font-bold px-3 py-1.5 rounded-xl transition shadow-lg shadow-emerald-600/20">🏭 Улучшить</button>
+  </div>
+  <div id="inventory-list" class="space-y-3"></div>
+ </section>
+
+ <section id="tab-chats" class="h-full flex flex-col space-y-3 hidden">
+  <div class="flex justify-between items-center mb-1">
+   <h1 class="text-base font-extrabold">Диалоги</h1>
+   <button onclick="clearAllChats()" class="text-xs bg-red-950/40 hover:bg-red-900/50 text-red-300 px-2.5 py-1 rounded-xl border border-red-800 transition">🗑️ Очистить все</button>
+  </div>
+  <p class="text-[10px] text-slate-400">💡 Используйте кнопку 🗑️ для удаления чата.</p>
+  <div id="chats-container" class="space-y-2.5 flex-1 overflow-y-auto hide-scrollbar"></div>
+ </section>
+
+ <section id="tab-profile" class="space-y-4 hidden">
+  <h1 class="text-base font-extrabold">Профиль перекупа</h1>
+  <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2.5 shadow-sm">
+   <div class="flex justify-between text-xs"><span class="text-slate-400">День:</span> <span id="profile-day" class="font-bold">День 1</span></div>
+   <div class="flex justify-between text-xs"><span class="text-slate-400">Репутация:</span> <span id="profile-rep" class="font-bold text-amber-400">⭐️ 5.0</span></div>
+   <div class="flex justify-between text-xs"><span class="text-slate-400">Всего сделок:</span> <span id="profile-deals" class="font-bold">0</span></div>
+   <div class="flex justify-between text-xs"><span class="text-slate-400">Чистая прибыль:</span> <span id="profile-profit" class="font-bold text-emerald-400">0 ₽</span></div>
+  </div>
+  <h2 class="text-sm font-bold pt-1">История сделок</h2>
+  <div id="history-list" class="space-y-2"><p class="text-xs text-slate-500">История пока пуста...</p></div>
+  <div class="pt-2"><button onclick="resetProgress()" class="w-full bg-red-950/45 hover:bg-red-900/50 border border-red-800 text-red-300 text-xs py-2.5 rounded-xl transition font-medium">⚠️ Сбросить весь прогресс</button></div>
+ </section>
+</main>
+
+<nav class="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 flex justify-around py-3 z-30 pb-12 shadow-2xl">
+ <button onclick="switchTab('search')" id="nav-search" class="flex flex-col items-center text-[#00AAFF] transition"><span class="text-xl">🔍</span><span class="text-[10px] mt-0.5 font-semibold">Поиск</span></button>
+ <button onclick="switchTab('inventory')" id="nav-inventory" class="flex flex-col items-center text-slate-400 relative transition"><span class="text-xl">📦</span><span class="text-[10px] mt-0.5 font-semibold">Склад</span></button>
+ <button onclick="switchTab('chats')" id="nav-chats" class="flex flex-col items-center text-slate-400 relative transition"><span class="text-xl">💬</span><span class="text-[10px] mt-0.5 font-semibold">Чаты</span><span id="badge-chats" class="absolute -top-1 right-2 bg-emerald-500 text-slate-950 font-bold text-[9px] px-1.5 py-0.2 rounded-full hidden">0</span></button>
+ <button onclick="switchTab('profile')" id="nav-profile" class="flex flex-col items-center text-slate-400 transition"><span class="text-xl">👤</span><span class="text-[10px] mt-0.5 font-semibold">Профиль</span></button>
+</nav>
+
+<!-- Модальное окно чата -->
+<div id="chat-modal" class="fixed inset-0 bg-[#090d16] z-40 hidden flex flex-col">
+ <div class="bg-slate-900 border-b border-slate-800 p-3 flex items-center justify-between shrink-0 shadow-md">
+  <button onclick="closeChat()" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-xl border border-slate-700 transition">← Назад</button>
+  <div id="chat-seller-name" class="font-bold text-xs text-center truncate px-2">Чат</div>
+  <button onclick="cancelDeal()" class="text-xs bg-red-950/60 hover:bg-red-900 text-red-300 px-2.5 py-1.5 rounded-xl border border-red-800/60 transition">❌ Сбежать</button>
+ </div>
+ <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3 hide-scrollbar bg-[#090d16]"></div>
+ <div class="p-3 bg-slate-900 border-t border-slate-800 space-y-2 pb-12 flex items-center justify-between gap-2 shrink-0">
+  <div id="chat-actions" class="flex gap-2 overflow-x-auto pb-1 hide-scrollbar flex-1"></div>
+ </div>
+</div>
+
+<!-- Модальное окно предпродажной подготовки -->
+<div id="prep-modal" class="fixed inset-0 bg-slate-950/90 z-40 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+ <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-4 space-y-4 shadow-2xl">
+  <h2 class="text-base font-bold">Предпродажная подготовка и ремонт</h2>
+  <p id="prep-item-title" class="text-xs text-slate-400"></p>
+  <div id="prep-options" class="space-y-2">
+   <label class="flex items-center space-x-2 bg-slate-800 p-2.5 rounded-xl border border-slate-700 cursor-pointer">
+    <input type="checkbox" id="prep-clean" value="0" class="rounded accent-[#00AAFF]">
+    <span id="label-prep-clean" class="text-xs flex-1">Чистка / Косметика (1 000 ₽)</span>
+   </label>
+   <label class="flex items-center space-x-2 bg-slate-800 p-2.5 rounded-xl border border-slate-700 cursor-pointer">
+    <input type="checkbox" id="prep-service" value="0" class="rounded accent-[#00AAFF]">
+    <span id="label-prep-service" class="text-xs flex-1">Капитальный ремонт / Устранение дефекта (5 000 ₽)</span>
+   </label>
+   <div class="pt-2">
+    <label class="text-[11px] text-slate-400 block mb-1">Желаемая цена продажи (лимит рынка):</label>
+    <input type="number" id="prep-sell-price" class="w-full bg-slate-800 border border-slate-700 p-2.5 rounded-xl text-xs text-white">
+    <p id="prep-max-limit" class="text-[10px] text-slate-500 mt-1"></p>
+   </div>
+  </div>
+  <div class="flex gap-2 pt-2">
+   <button onclick="closePrepModal()" class="flex-1 bg-slate-800 py-2.5 rounded-xl text-xs font-bold">Отмена</button>
+   <button onclick="putOnSale()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-2.5 rounded-xl text-xs font-bold text-slate-950 shadow-lg shadow-emerald-600/20">Выставить</button>
+  </div>
+ </div>
+</div>
+
+<!-- Модальное окно Админ-панели с редактором кода -->
+<div id="admin-modal" class="fixed inset-0 bg-slate-950/90 z-50 hidden flex items-center justify-center p-3 backdrop-blur-md">
+ <div class="bg-slate-900 border border-indigo-500/50 w-full max-w-lg h-[85vh] rounded-2xl p-4 flex flex-col space-y-3 shadow-2xl">
+  <div class="flex justify-between items-center border-b border-slate-800 pb-2 shrink-0">
+   <h2 class="text-sm font-extrabold text-indigo-400">👑 Админ-панель и Редактор кода</h2>
+   <button onclick="closeAdminPanel()" class="text-xs bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg">✕</button>
+  </div>
+  
+  <div class="flex gap-1 shrink-0">
+   <button onclick="switchAdminTab('cheats')" id="adm-tab-btn-cheats" class="flex-1 bg-indigo-600 text-white font-bold text-xs py-1.5 rounded-xl transition">⚡ Читы</button>
+   <button onclick="switchAdminTab('code')" id="adm-tab-btn-code" class="flex-1 bg-slate-800 text-slate-300 font-bold text-xs py-1.5 rounded-xl transition">💻 Код игры</button>
+  </div>
+
+  <div id="adm-tab-cheats" class="space-y-3 text-xs overflow-y-auto flex-1 hide-scrollbar">
+   <div>
+    <label class="text-slate-400 block mb-1">Выдать баланс:</label>
+    <div class="flex gap-1.5">
+     <button onclick="adminAddMoney(100000)" class="flex-1 bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500 py-2 rounded-xl font-bold text-emerald-300">+100 тыс</button>
+     <button onclick="adminAddMoney(10000000)" class="flex-1 bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500 py-2 rounded-xl font-bold text-emerald-300">+10 млн</button>
+     <button onclick="adminAddMoney(100000000)" class="flex-1 bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500 py-2 rounded-xl font-bold text-emerald-300">+100 млн</button>
+    </div>
+   </div>
+   <div>
+    <label class="text-slate-400 block mb-1">Управление временем:</label>
+    <button onclick="adminSetTime(8)" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 py-2 rounded-xl font-medium mb-1">🌅 Утро (08:00)</button>
+    <button onclick="adminSetTime(22)" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 py-2 rounded-xl font-medium">🌙 Ночь (22:00)</button>
+   </div>
+   <div>
+    <label class="text-slate-400 block mb-1">Действия:</label>
+    <button onclick="adminSpawnItem()" class="w-full bg-indigo-600 hover:bg-indigo-500 py-2 rounded-xl font-bold text-white mb-1 shadow-md">📦 Спавнить товар на склад</button>
+    <button onclick="adminClearInventory()" class="w-full bg-red-950/40 hover:bg-red-900/50 border border-red-800 py-2 rounded-xl font-medium text-red-300 mb-1">🗑️ Очистить склад</button>
+    <button onclick="resetProgress()" class="w-full bg-red-950/60 hover:bg-red-900 border border-red-700 py-2 rounded-xl font-medium text-red-200">⚠️ Полный сброс игры</button>
+   </div>
+  </div>
+
+  <div id="adm-tab-code" class="flex flex-col space-y-2 flex-1 hidden">
+   <div class="flex gap-2 items-center shrink-0">
+    <input type="text" id="code-search-input" placeholder="Поиск в коде..." oninput="searchInCode()" class="flex-1 bg-slate-800 border border-slate-700 px-2.5 py-1.5 rounded-xl text-xs text-white">
+    <button onclick="applyCodeChanges()" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-3 py-1.5 rounded-xl text-xs">💾 Применить</button>
+   </div>
+   <textarea id="game-code-editor" class="w-full flex-1 bg-slate-950 border border-slate-800 p-2.5 rounded-xl font-mono text-[11px] text-emerald-400 hide-scrollbar resize-none"></textarea>
+   <p class="text-[10px] text-slate-500">💡 Вы можете изменять код игры здесь и нажимать «Применить» для мгновенного обновления!</p>
+  </div>
+
+  <button onclick="closeAdminPanel()" class="w-full bg-slate-800 hover:bg-slate-700 py-2.5 rounded-xl text-xs font-bold shrink-0 mt-1">Закрыть</button>
+ </div>
+</div>
+
+<script>
+let game = {
+ balance: 10000,
+ day: 1,
+ timeHour: 8,
+ reputation: 5.0,
+ totalDeals: 0,
+ totalProfit: 0,
+ maxWarehouse: 5,
+ feed: [],
+ inventory: [],
+ chats: [],
+ history: [],
+ activeChatId: null,
+ activePrepItemIndex: null,
+ currentCategory: 'all'
+};
+
+const itemTemplates = [
+ // --- ХЛАМ И МЕЛОЧЬ ---
+ { name: "Пачка наклеек с аниме", basePrice: 150, marketPrice: 400, icon: "📦", category: "trash", questions: ["Все наклейки на месте?", "Глянцевые или матовые?", "Не мятые?"], defect: "Упаковка слегка замята" },
+ { name: "Старый граненый стакан СССР", basePrice: 200, marketPrice: 600, icon: "🥛", category: "trash", questions: ["Без трещин и сколов?", "Гост выбит на дне?", "Чистый?"], defect: "Небольшой налет" },
+ { name: "Кассета Виктора Цоя (Кино)", basePrice: 400, marketPrice: 1200, icon: "📼", category: "trash", questions: ["Лента не зажевана?", "Коробка родная?", "Звук нормальный?"], defect: "Потерта обложка" },
+ { name: "Виниловая пластинка Алла Пугачева", basePrice: 300, marketPrice: 900, icon: "🎵", category: "trash", questions: ["Царапины глубокие есть?", "Конверт целый?", "Не запилиаается при проигрывании?"], defect: "Мелкие царапины на треке" },
+ { name: "Настольная игра «Монополия» (неполная)", basePrice: 350, marketPrice: 900, icon: "🎲", category: "trash", questions: ["Все ли деньги на месте?", "Фишки все живые?", "Коробка рваная?"], defect: "Утеряны три отеля" },
+ { name: "СССР значок «Ударник пятилетки»", basePrice: 250, marketPrice: 800, icon: "🎖️", category: "trash", questions: ["Эмаль целая без сколов?", "Застежка работает?", "Оригинал?"], defect: "Застежка ослаблена" },
+ { name: "Мангал разборный походный", basePrice: 600, marketPrice: 1500, icon: "🍢", category: "trash", questions: ["Металл тонкий или толстый?", "Сколько шампуров в комплекте?", "Ножки устойчивые?"], defect: "Следы нагара" },
+ { name: "Гирлянда новогодняя «Советская»", basePrice: 450, marketPrice: 1300, icon: "🎄", category: "trash", questions: ["Все лампочки горят?", "Штекер советский или евро?", "Запасные лампы есть?"], defect: "Одна лампочка не горит" },
+ { name: "гантель разборная 5кг", basePrice: 900, marketPrice: 2100, icon: "🏋️", category: "trash", questions: ["Блины чугунные?", "Резьба на грифе целая?", "Не ржавая?"], defect: "Легкая ржавчина на блинах" },
+ { name: "Рюкзак городской тканевый", basePrice: 500, marketPrice: 1400, icon: "🎒", category: "trash", questions: ["Молнии все работают?", "Лямки не порваны?", "Дно целое?"], defect: "Нужна легкая стирка" },
+
+ // --- ТЕЛЕФОНЫ И ПК (ГАДЖЕТЫ) ---
+ { name: "Смартфон Poco X3 Pro", basePrice: 7500, marketPrice: 10500, icon: "📱", category: "gadgets", questions: ["Экран родной менялся?", "Не отваливается ли процессор (болячка)?", "Коробка и зарядка есть?"], defect: "Потертая задняя крышка" },
+ { name: "Планшет Lenovo Tab M10", basePrice: 5500, marketPrice: 8000, icon: "📑", category: "gadgets", questions: ["Ютуб в высоком разрешении тянет?", "Батарею держит?", "Сенсор везде откликается?"], defect: "Царапина на защитном стекле" },
+ { name: "Роутер TP-Link AX50", basePrice: 3200, marketPrice: 5000, icon: "📡", category: "gadgets", questions: ["Wi-Fi 6 выдает нормально?", "Блок питания родной?", "Сколько гигабит порты?"], defect: "Желтоватый пластик корпуса" },
+ { name: "Механическая клавиатура RedSquare", basePrice: 2200, marketPrice: 3800, icon: "⌨️", category: "gadgets", questions: ["Какие свичи стоят (синие/красные)?", "Все клавиши срабатывают?", "Подсветка RGB настраивается?"], defect: "Залипает левый Shift" },
+ { name: "Игровая мышь Logitech G102", basePrice: 1100, marketPrice: 2000, icon: "🖱️", category: "gadgets", questions: ["Сенсор не срывает в играх?", "Колесо мыши не прокручивает назад?", "Даблкликов нет?"], defect: "Стерлись тефлоновые ножки" },
+ { name: "Монитор 24\" Samsung 75Hz", basePrice: 5000, marketPrice: 7500, icon: "🖥️", category: "gadgets", questions: ["Битые пиксели есть?", "HDMI кабель в комплекте?", "Матрица IPS или TN?"], defect: "Одна царапина на матрице сбоку" },
+ { name: "Фитнес-браслет Honor Band 5", basePrice: 900, marketPrice: 1800, icon: "⌚", category: "gadgets", questions: ["Пульс меряет корректно?", "Ремешок менялся?", "Зарядка держит неделю?"], defect: "Потертости на экране" },
+ { name: "Внешний жесткий диск 1TB", basePrice: 2500, marketPrice: 4200, icon: "💾", category: "gadgets", questions: ["Смарт-диск в Виктории зеленый (без бэдов)?", "Скорость по USB 3.0 нормальная?", "Шнур в комплекте?"], defect: "Мелкие царапины на корпусе" },
+ { name: "Процессор Intel Core i3-10100F", basePrice: 3400, marketPrice: 5200, icon: "💻", category: "gadgets", questions: ["Ножки целые не загнуты?", "В разгоне не был?", "Боксовый кулер отдашь?"], defect: "Следы термопасты на текстолите" },
+ { name: "Наушники JBL Tune 510BT", basePrice: 1800, marketPrice: 3100, icon: "🎧", category: "gadgets", questions: ["Амбушюры целые, не облезли?", "По Bluetooth телефон видит сразу?", "Микрофон работает в звонках?"], defect: "Амбушюры начали шелушиться" },
+ { name: "Графический планшет One by Wacom", basePrice: 2400, marketPrice: 4000, icon: "✒️", category: "gadgets", questions: ["Перо с наконечником в комплекте?", "Царапин на рабочей поверхности много?", "Драйвера на Windows 11 встают?"], defect: "Потертости рабочей зоны" },
+ { name: "Колонка JBL Flip 4 (Оригинал)", basePrice: 3100, marketPrice: 5300, icon: "🔊", category: "gadgets", questions: ["Аккумулятор на какой громкости держит?", "Динамики не хрипят на басах?", "Заглушка плотная?"], defect: "Сеточка слегка замята" },
+ { name: "Видеокарта RX 580 8GB (Китайка)", basePrice: 4800, marketPrice: 7200, icon: "💻", category: "gadgets", questions: ["В майнинге не пахала круглосуточно?", "Температуры в стресс-тесте какие?", "Кулеры не шумят?"], defect: "Шумит один кулер под нагрузкой" },
+ { name: "Материнская плата LGA1200", basePrice: 3800, marketPrice: 6000, icon: "🖥️", category: "gadgets", questions: ["Все слоты памяти рабочие?", "Заглушка в корпус есть?", "Ножки в сокете ровные?"], defect: "Нет оригинальной коробки" },
+ { name: "Смартфон Samsung Galaxy A12", basePrice: 4500, marketPrice: 7000, icon: "📱", category: "gadgets", questions: ["Экран менялся на китайский?", "Отвязан от аккаунтов?", "Слот под две симки работает?"], defect: "Трещина на защитном стекле" },
+
+ // --- АВТО И МОТО ---
+ { name: "Комплект литых дисков R15", basePrice: 9000, marketPrice: 14000, icon: "🛞", category: "transport", questions: ["Не вареные, не катаные?", "Геометрия ровная на станке?", "Разболтовка какая?"], defect: "Бордюрная болезнь на краях" },
+ { name: "Автомагнитола Pioneer", basePrice: 3500, marketPrice: 6000, icon: "📻", category: "transport", questions: ["Bluetooth работает стабильно?", "Линейные выходы на саб целые?", "Фишка подключения в комплекте?"], defect: "Потерта лицевая панель" },
+ { name: "Летняя резина R16 (пара)", basePrice: 4000, marketPrice: 7000, icon: "🛞", category: "transport", questions: ["Грыж и боковых порезов нет?", "Остаток протектор в миллиметрах сколько?", "Какой год выпуска шин?"], defect: "Износ протектор 50%" },
+ { name: "Автобокс на крышу багажника", basePrice: 11000, marketPrice: 17000, icon: "🚗", category: "transport", questions: ["Крепления в комплекте есть?", "Замок с ключом закрывается?", "Трещин на пластике нет?"], defect: "Выгорел пластик на солнце" },
+ { name: "Домкрат гибридный подкатный 2т", basePrice: 2800, marketPrice: 4800, icon: "🛠️", category: "transport", questions: ["Масло не подтекает из сальника?", "Машину держит уверенно?", "Ручка родная?"], defect: "Мелкие сколы краски" },
+ { name: "Видеорегистратор 70mai", basePrice: 2600, marketPrice: 4500, icon: "📹", category: "transport", questions: ["Номер встречных машин читает четко?", "Карту памяти поддерживает?", "Крепление на скотч держит?"], defect: "Затерта линза объектива" },
+ { name: "Автокресло детское (0-25 кг)", basePrice: 3200, marketPrice: 5800, icon: "💺", category: "transport", questions: ["Чехлы снимаются для стирки?", "Ремни безопасности целые?", "В ДТП кресло не участвовало?"], defect: "Пятно на чехле" },
+ { name: "Сабвуфер активный в багажник", basePrice: 5500, marketPrice: 8900, icon: "🔊", category: "transport", questions: ["Диффузор не порван?", "Встроенный усилитель не уходит в защиту?", "Провода для подключения есть?"], defect: "Царапины на карпете корпуса" },
+ { name: "Генератор ваз 2110 (восстановленный)", basePrice: 2500, marketPrice: 4300, icon: "⚡", category: "transport", questions: ["Ампераж какой выдает?", "Диодный мост менялся?", "Подшипники не гудят?"], defect: "Следы грязи в ребрах" },
+ { name: "Фаркоп универсальный с проводкой", basePrice: 3000, marketPrice: 5200, icon: "🚙", category: "transport", questions: ["На какую модель машины стоял?", "Шар съемный?", "Ржавчина сильная есть?"], defect: "Поверхностная ржавчина" },
+ { name: "Комплект ковров EVA в салон", basePrice: 1800, marketPrice: 3200, icon: "🚙", category: "transport", questions: ["Ячейки ромбы или соты?", "Клипсы крепления целые?", "На какую модель авто?"], defect: "Небольшой износ у педали" },
+ { name: "Набор автомобильных ключей (кейс)", basePrice: 2900, marketPrice: 5000, icon: "🧰", category: "transport", questions: ["Все трещотки и головки на месте?", "Кейс закрывается?", "Хром-ванадий сталь?"], defect: "Утеряна головка на 13" },
+
+ // --- НЕДВИЖИМОСТЬ ---
+ { name: "Гараж металлический разборный", basePrice: 45000, marketPrice: 65000, icon: "🏚️", category: "realty", questions: ["Металл толстый?", "Самовывоз откуда?", "Замок на воротах нормальный?"], defect: "Нужна покраска ворот" },
+ { name: "Дачный участок 6 соток (без домика)", basePrice: 150000, marketPrice: 210000, icon: "🌱", category: "realty", questions: ["Свет и вода проведены по границе?", "Взносы в СНТ плачены?", "Межевание сделано?"], defect: "Зарос бурьяном" },
+ { name: "Вагончик-бытовка строительная", basePrice: 75000, marketPrice: 110000, icon: "🏠", category: "realty", questions: ["Утепление минеральной ватой есть?", "Кровля не протекает?", "Полозья для перевозки целые?"], defect: "Вмятина на обшивке" },
+ { name: "Комната в общежитии 12м²", basePrice: 650000, marketPrice: 820000, icon: "🚪", category: "realty", questions: ["Соседи тихие по этажу?", "Оплату коммуналки покажете?", "Мебель остается?"], defect: "Требуется косметический ремонт" },
+
+ // --- ЛЮКС И ЯХТЫ ---
+ { name: "Швейцарские часы Tissot (оригинал)", basePrice: 18000, marketPrice: 29000, icon: "⌚", category: "luxury", scam: true, questions: ["Коробка, паспорт, чеки есть?", "Сапфировое стекло без царапин?", "Ход точный механики?"], defect: "Потертости на браслете" },
+ { name: "Золотая цепь 585 пробы (50 грамм)", basePrice: 180000, marketPrice: 220000, icon: "⛓️", category: "luxury", questions: ["Ломбард проверял реактивом?", "Замок коробочка надежный?", "Бирки заводские сохранились?"], defect: "Мелкие микроцарапины" },
+ { name: "Норковая шуба б/у премиум", basePrice: 25000, marketPrice: 42000, icon: "🧥", category: "luxury", questions: ["Мех не лезет при поглаживании?", "Какой размер российский?", "Подкладка чистая?"], defect: "Небольшой износ на рукавах" },
+ { name: "Эхолот Garmin для рыбалки", basePrice: 32000, marketPrice: 48000, icon: "📡", category: "luxury", questions: ["Датчик трансдьюсер в комплекте?", "Экран без выгорания пикселей?", "Карты глубин загружены?"], defect: "Царапина на корпусе прибора" },
+ { name: "Квадрокоптер DJI Mini 2", basePrice: 24000, marketPrice: 36000, icon: "🛸", category: "luxury", questions: ["Были ли краши (падения)?", "Сколько циклов батарей?", "Пульт и запасные пропеллеры есть?"], defect: "Трещинка на лучах корпуса" },
+ { name: "Снегоход Буран (в рабочем состоянии)", basePrice: 120000, marketPrice: 165000, icon: "🛷", category: "luxury", questions: ["Гусеницы живые без трещин?", "Мотор заводится в мороз?", "Документы старого образца есть?"], defect: "Изношена гусеница" },
+ { name: "Гидроцикл Yamaha SuperJet", basePrice: 280000, marketPrice: 350000, icon: "🚤", category: "luxury", questions: ["Водомет чистый без задиров?", "Компрессия в двух цилиндрах ровная?", "Прицеп для перевозки отдашь?"], defect: "Потертости корпуса снизу" },
+ { name: "Профессиональная кофемашина DeLonghi", basePrice: 22000, marketPrice: 34000, icon: "☕", category: "luxury", questions: ["Капучинатор взбивает пену?", "Декальцинация вовремя делалась?", "Счетчик чашек какой?"], defect: "Налет в поддоне для капель" }
+];
+
+const sellerNames = ["Сергей", "Алексей", "Максим", "Иван", "Артем", "Дмитрий", "Тимур", "Руслан", "Игорь", "Андрей", "Кирилл", "Павел"];
+const buyerNames = ["Артур", "Денис", "Виктор", "Стас", "Олег", "Илья", "Влад", "Михаил", "Глеб", "Егор"];
+
+function saveGame() {
+ localStorage.setItem('avito_reseller_save_v29', JSON.stringify(game));
+}
+
+function loadGame() {
+ const saved = localStorage.getItem('avito_reseller_save_v29');
+ if (saved) {
+  try {
+   game = JSON.parse(saved);
+  } catch(e) {
+   generateFeed();
+  }
+ }
+ if (game.timeHour === undefined) game.timeHour = 8;
+ if (!game.chats) game.chats = [];
+ if (!game.feed || game.feed.length === 0) {
+  generateFeed();
+ }
+ updateUI();
+}
+
+function resetProgress() {
+ if (confirm("Сбросить весь прогресс?")) {
+  localStorage.removeItem('avito_reseller_save_v29');
+  location.reload();
+ }
+}
+
+function switchTab(tabId) {
+ ['search', 'inventory', 'chats', 'profile'].forEach(t => {
+  const el = document.getElementById(`tab-${t}`);
+  const btn = document.getElementById(`nav-${t}`);
+  if (el) el.classList.toggle('hidden', t !== tabId);
+  if (btn) {
+   if (t === tabId) {
+    btn.classList.replace('text-slate-400', 'text-[#00AAFF]');
+   } else {
+    btn.classList.replace('text-[#00AAFF]', 'text-slate-400');
+   }
+  }
+ });
+ updateUI();
+}
+
+function setCategory(cat) {
+ game.currentCategory = cat;
+ document.querySelectorAll('.cat-btn').forEach(b => {
+  b.className = "cat-btn bg-slate-800 text-slate-300 text-[11px] px-3 py-1.5 rounded-xl whitespace-nowrap transition";
+ });
+ event.target.className = "cat-btn bg-[#00AAFF] text-slate-950 font-bold text-[11px] px-3 py-1.5 rounded-xl whitespace-nowrap transition shadow-sm";
+ updateUI();
+}
+
+function generateFeed() {
+ game.feed = [];
+ const count = 35 + Math.floor(Math.random() * 6);
+
+ for (let i = 0; i < count; i++) {
+  const template = itemTemplates[Math.floor(Math.random() * itemTemplates.length)];
+  const price = Math.round(template.basePrice * (1 + (Math.random() * 0.15 - 0.07)));
+  const conditions = ["Отличное", "Хорошее", "Требует внимания", "Как новое"];
+  const isScam = template.scam ? (Math.random() < 0.35) : (Math.random() < 0.06);
+
+  let cleanCost = Math.round(Math.max(300, price * 0.03));
+  let serviceCost = Math.round(Math.max(1500, price * 0.12));
+
+  game.feed.push({
+   id: 'feed_item_' + i + '_' + Math.random(),
+   name: template.name,
+   price,
+   minAllowedPrice: Math.round(template.basePrice * 0.82),
+   marketPrice: template.marketPrice,
+   maxAllowedSellPrice: Math.round(template.marketPrice * 1.3),
+   icon: template.icon,
+   category: template.category || 'gadgets',
+   seller: sellerNames[Math.floor(Math.random() * sellerNames.length)],
+   scam: isScam,
+   defect: template.defect || "Мелкие следы эксплуатации",
+   hiddenDefect: template.hiddenDefect || (isScam ? "Товар поддельный или деньги уходят мошенникам" : (Math.random() > 0.5 ? "Имеются скрытые изъяны узлов" : null)),
+   condition: conditions[Math.floor(Math.random() * conditions.length)],
+   questions: template.questions || ["Состояние нормальное?"],
+   cleanCost,
+   serviceCost,
+   inspected: false,
+   inspectorReport: null,
+   chatId: null,
+   purchased: false,
+   bargainCount: 0
+  });
+ }
+ saveGame();
+}
+
+function refreshFeed() {
+ generateFeed();
+ updateUI();
+}
+
+// Время: 1 час = 15 секунд
+setInterval(() => {
+ game.timeHour++;
+ if (game.timeHour >= 22) {
+  game.timeHour = 22;
+ }
+
+ game.inventory.forEach(item => {
+  if (item.onSale && !item.sold && !item.buyerChatId && Math.random() > 0.4) {
+   triggerNewBuyer(item);
+  }
+ });
+
+ saveGame();
+ updateUI();
+}, 15000);
+
+function triggerNewBuyer(item) {
+ const buyer = buyerNames[Math.floor(Math.random() * buyerNames.length)];
+ const buyerChatId = 'sell_chat_' + Math.random();
+ item.buyerChatId = buyerChatId;
+ 
+ const initialOffer = Math.round(item.sellPrice * (0.92 + Math.random() * 0.06));
+
+ const questions = [
+  `Здравствуйте! Готов забрать ${item.name}. Предлагаю ${initialOffer.toLocaleString()} ₽, устроите?`,
+  `Доброго дня! Интересует ${item.name}. За сколько отдадите? Предложу ${initialOffer.toLocaleString()} ₽.`,
+  `Привет! Заберу ${item.name} сегодня за ${initialOffer.toLocaleString()} ₽.`
+ ];
+ const randomQ = questions[Math.floor(Math.random() * questions.length)];
+
+ game.chats.push({
+  id: buyerChatId,
+  mode: 'selling',
+  inventoryIndex: game.inventory.indexOf(item),
+  itemName: item.name,
+  seller: buyer,
+  offerPrice: initialOffer,
+  buyerBargainAttempts: 0,
+  messages: [
+   { sender: 'seller', text: randomQ }
+  ],
+  unread: true,
+  pinned: false,
+  createdAt: Date.now()
+ });
+}
+
+function skipNight() {
+ game.day++;
+ game.timeHour = 8;
+ generateFeed();
+
+ // Ночью за время пока перекуп спал, покупатели проявляют активность на выставленные товары
+ game.inventory.forEach(item => {
+  if (item.onSale && !item.sold && !item.buyerChatId && Math.random() > 0.3) {
+   triggerNewBuyer(item);
+  }
+ });
+
+ saveGame();
+ updateUI();
+ alert(`Наступил день ${game.day}! Утро (08:00). Проверьте чаты — за ночь поступили новые сообщения от покупателей.`);
+}
+
+function startChat(itemIndex) {
+ const item = game.feed[itemIndex];
+ if (!item.chatId) {
+  item.chatId = 'buy_chat_' + item.id;
+  game.chats.push({
+   id: item.chatId,
+   mode: 'buying',
+   itemIndex: itemIndex,
+   itemName: item.name,
+   seller: item.seller,
+   messages: [
+    { sender: 'seller', text: item.purchased ? `Здравствуйте! Товар уже продан.` : `Здравствуйте! Да, ${item.name} в продаже. Слушаю вас.` }
+   ],
+   discountGiven: 0,
+   unread: false,
+   pinned: false,
+   createdAt: Date.now()
+  });
+ }
+ openChat(item.chatId);
+}
+
+function openChat(chatId) {
+ game.activeChatId = chatId;
+ const chat = game.chats.find(c => c.id === chatId);
+ if (!chat) return;
+
+ if (chatId.startsWith('buy_chat_')) {
+  chat.mode = 'buying';
+ }
+
+ chat.unread = false;
+ document.getElementById('chat-seller-name').innerText = `${chat.seller} (${chat.itemName})`;
+ document.getElementById('chat-modal').classList.remove('hidden');
+ renderChatMessages();
+ renderChatActions();
+ saveGame();
+ updateUI();
+}
+
+function closeChat() {
+ document.getElementById('chat-modal').classList.add('hidden');
+ game.activeChatId = null;
+ updateUI();
+}
+
+function cancelDeal() {
+ if (confirm("Точно выйти из чата?")) {
+  closeChat();
+ }
+}
+
+function deleteChat(chatId, event) {
+ event.stopPropagation();
+ if (confirm("Удалить этот чат?")) {
+  game.chats = game.chats.filter(c => c.id !== chatId);
+  saveGame();
+  updateUI();
+ }
+}
+
+function togglePinChat(chatId, event) {
+ event.stopPropagation();
+ const chat = game.chats.find(c => c.id === chatId);
+ if (chat) {
+  chat.pinned = !chat.pinned;
+  game.chats.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+  saveGame();
+  updateUI();
+ }
+}
+
+function clearAllChats() {
+ if (confirm("Очистить все диалоги?")) {
+  game.chats = [];
+  saveGame();
+  updateUI();
+ }
+}
+
+function renderChatMessages() {
+ const container = document.getElementById('chat-messages');
+ const chat = game.chats.find(c => c.id === game.activeChatId);
+ if (!chat) return;
+
+ container.innerHTML = chat.messages.map(m => `
+  <div class="flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}">
+   <div class="max-w-[80%] p-3 rounded-2xl text-xs ${m.sender === 'user' ? 'bg-[#00AAFF] text-slate-950 font-medium rounded-br-none' : 'bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700'}">
+    ${m.text}
+   </div>
+  </div>
+ `).join('');
+ container.scrollTop = container.scrollHeight;
+}
+
+function renderChatActions() {
+ const actionsContainer = document.getElementById('chat-actions');
+ const chat = game.chats.find(c => c.id === game.activeChatId);
+ if (!chat || chat.closed) {
+  actionsContainer.innerHTML = `<p class="text-xs text-slate-500 font-medium text-center py-1">🔒 Сделка закрыта или отменена.</p>`;
+  return;
+ }
+
+ if (chat.mode === 'selling') {
+  const item = game.inventory[chat.inventoryIndex];
+  if (!item || item.sold || !item.onSale) {
+   actionsContainer.innerHTML = `<p class="text-xs text-slate-500">Товар снят с продажи или уже продан.</p>`;
+   return;
+  }
+  actionsContainer.innerHTML = `
+   <button onclick="buyerChatAction('agree', ${chat.inventoryIndex})" class="bg-emerald-600 hover:bg-emerald-500 font-bold text-slate-950 text-xs px-3 py-2 rounded-xl whitespace-nowrap transition">🤝 Продать за ${chat.offerPrice.toLocaleString()} ₽</button>
+   <button onclick="buyerChatAction('bargain', ${chat.inventoryIndex})" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs px-3 py-2 rounded-xl whitespace-nowrap transition">📈 Поднять цену</button>
+  `;
+  return;
+ }
+
+ const item = game.feed[chat.itemIndex];
+ if (!item || item.purchased) {
+  actionsContainer.innerHTML = `<p class="text-xs text-slate-500 font-medium text-center py-1">🔒 Сделка завершена.</p>`;
+  return;
+ }
+
+ let questionButtons = item.questions.map((q, idx) => `
+  <button onclick="askCustomQuestion(${chat.itemIndex}, ${idx})" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs px-2.5 py-2 rounded-xl whitespace-nowrap transition">❓ ${q}</button>
+ `).join('');
+
+ let expertButtonHTML = '';
+ if (item.price >= 5000) {
+  let expertCost = Math.max(1500, Math.round(item.price * 0.05));
+  expertButtonHTML = `<button onclick="hireExpert(${chat.itemIndex}, ${expertCost})" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-2.5 py-2 rounded-xl whitespace-nowrap transition shadow-sm">🕵️ Эксперт (${expertCost.toLocaleString()} ₽)</button>`;
+ }
+
+ actionsContainer.innerHTML = `
+  ${expertButtonHTML}
+  <button onclick="chatAction('bargain', ${chat.itemIndex})" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs px-2.5 py-2 rounded-xl whitespace-nowrap transition">📉 Сбить цену</button>
+  ${questionButtons}
+  <button onclick="buyItem(${chat.itemIndex})" class="bg-emerald-600 hover:bg-emerald-500 font-bold text-slate-950 text-xs px-3 py-2 rounded-xl whitespace-nowrap transition shadow-sm">💰 Купить (${item.price.toLocaleString()} ₽)</button>
+ `;
+}
+
+function askCustomQuestion(itemIndex, qIdx) {
+ const item = game.feed[itemIndex];
+ const chat = game.chats.find(c => c.id === game.activeChatId);
+ if (!chat || item.purchased) return;
+
+ const questionText = item.questions[qIdx];
+ chat.messages.push({ sender: 'user', text: questionText });
+
+ setTimeout(() => {
+  let reply = "Да, всё нормально с этим.";
+  if (item.scam) {
+   reply = "Давайте предоплату на карту или перейдем в другой мессенджер, там удобнее.";
+  } else {
+   // Разнообразные ответы по смыслу вопросов
+   if (qIdx === 0) {
+    reply = item.defect ? `Ну если честно: ${item.defect}. Но на работу не влияет.` : "Всё полностью целое, любые проверки при встрече.";
+   } else if (qIdx === 1) {
+    reply = item.hiddenDefect ? `Кое-какой нюанс есть: ${item.hiddenDefect}. Отсюда и цена такая.` : "Состояние отличное, пользовались аккуратно в чехле/пленке.";
+   } else {
+    reply = "Работает отлично, комплект полный, приезжайте смотрите.";
+   }
+  }
+  chat.messages.push({ sender: 'seller', text: reply });
+  renderChatMessages();
+ }, 600);
+
+ renderChatMessages();
+}
+
+function hireExpert(itemIndex, cost) {
+ const item = game.feed[itemIndex];
+ if (item.price < 5000) {
+  alert("Экспертиза доступна только для товаров стоимостью от 5 000 ₽!");
+  return;
+ }
+ if (game.balance < cost) {
+  alert(`Недостаточно средств для вызова эксперта (нужно ${cost.toLocaleString()} ₽)!`);
+  return;
+ }
+ if (item.inspected) {
+  alert("Этот товар уже проверен экспертом!");
+  return;
+ }
+
+ if (!confirm(`Услуги авто/тех-эксперта. Стоимость проверки: ${cost.toLocaleString()} ₽. Вызвать?`)) {
+  return;
+ }
+
+ game.balance -= cost;
+ item.inspected = true;
+
+ let report = "✅ Товар чистый, скрытых проблем не обнаружено.";
+ if (item.scam) {
+  report = "🚨 ОСТОРОЖНО! Это 100% скам и мошенники! Не вздумайте покупать!";
+ } else if (item.hiddenDefect) {
+  report = `⚠️ Обнаружен скрытый дефект: «${item.hiddenDefect}».`;
+ } else if (item.defect) {
+  report = `⚠️ Выявлен дефект: «${item.defect}».`;
+ }
+
+ item.inspectorReport = report;
+ const chat = game.chats.find(c => c.id === game.activeChatId);
+ if (chat) {
+  chat.messages.push({ sender: 'user', text: "Проверьте этот товар через эксперта." });
+  chat.messages.push({ sender: 'seller', text: `[Отчет эксперта]: ${report}` });
+ }
+ updateUI();
+ renderChatMessages();
+}
+
+function chatAction(actionType, itemIndex) {
+ const item = game.feed[itemIndex];
+ const chat = game.chats.find(c => c.id === game.activeChatId);
+ if (!chat || item.purchased) return;
+
+ if (actionType === 'bargain') {
+  chat.messages.push({ sender: 'user', text: "За сколько отдадите окончательно? Скиньте цену." });
+  item.bargainCount = (item.bargainCount || 0) + 1;
+
+  setTimeout(() => {
+   let reply = "";
+   if (item.bargainCount >= 3 || item.price <= item.minAllowedPrice) {
+    reply = "Ты слишком сильно сбиваешь цену! Наглеешь, базар окончен, я отменяю сделку!";
+    chat.messages.push({ sender: 'seller', text: reply });
+    chat.closed = true;
+    item.purchased = true;
+    renderChatMessages();
+    renderChatActions();
+    saveGame();
+    updateUI();
+    return;
+   }
+
+   if (item.scam) {
+    reply = "Цена и так подарок, без торга!";
+   } else {
+    const discount = Math.round(item.price * 0.03);
+    item.price -= discount;
+    chat.discountGiven = (chat.discountGiven || 0) + discount;
+    reply = `Ладно, скину немного. Новая цена: ${item.price.toLocaleString()} ₽.`;
+   }
+   chat.messages.push({ sender: 'seller', text: reply });
+   renderChatMessages();
+   renderChatActions();
+  }, 500);
+ }
+}
+
+function buyerChatAction(actionType, invIndex) {
+ const item = game.inventory[invIndex];
+ const chat = game.chats.find(c => c.id === game.activeChatId);
+ if (!chat || !item || item.sold || !item.onSale) return;
+
+ if (actionType === 'agree') {
+  chat.messages.push({ sender: 'user', text: `Согласен, беру за ${chat.offerPrice.toLocaleString()} ₽!` });
+  item.sold = true;
+  chat.closed = true;
+  item.sellPrice = chat.offerPrice;
+
+  setTimeout(() => {
+   chat.messages.push({ sender: 'seller', text: "Отлично, еду забирать! Сделка состоялась." });
+   
+   const profit = item.sellPrice - item.buyPrice - (item.prepCost || 0);
+   game.balance += item.sellPrice;
+   game.totalDeals++;
+   game.totalProfit += profit;
+   game.history.unshift({
+    text: `Продан ${item.name} за ${item.sellPrice.toLocaleString()} ₽`,
+    profit,
+    day: game.day
+   });
+
+   game.inventory = game.inventory.filter(i => i !== item);
+
+   renderChatMessages();
+   renderChatActions();
+   saveGame();
+   updateUI();
+  }, 500);
+ } else if (actionType === 'bargain') {
+  chat.buyerBargainAttempts = (chat.buyerBargainAttempts || 0) + 1;
+  chat.messages.push({ sender: 'user', text: "Нет, такая цена меня не устраивает, давай дороже!" });
+
+  setTimeout(() => {
+   let reply = "";
+   if (chat.buyerBargainAttempts >= 3 || chat.offerPrice >= item.maxAllowedSellPrice) {
+    reply = "Ты слишком задираешь цену! Я столько не заплачу, ищу другой вариант. Прощай!";
+    chat.messages.push({ sender: 'seller', text: reply });
+    chat.closed = true;
+    renderChatMessages();
+    renderChatActions();
+    saveGame();
+    updateUI();
+    return;
+   }
+
+   const increasedOffer = Math.round(chat.offerPrice * 1.05);
+   if (increasedOffer > item.maxAllowedSellPrice) {
+    reply = "Это уже грабеж! Я отказываюсь от покупки.";
+    chat.closed = true;
+   } else {
+    chat.offerPrice = increasedOffer;
+    reply = `Ладно, могу накинуть до ${chat.offerPrice.toLocaleString()} ₽, больше у меня нет. Согласен?`;
+   }
+
+   chat.messages.push({ sender: 'seller', text: reply });
+   renderChatMessages();
+   renderChatActions();
+  }, 600);
+ }
+}
+
+function buyItem(itemIndex) {
+ const item = game.feed[itemIndex];
+ if (item.purchased || item.closed) {
+  alert("Товар уже недоступен или сделка сорвана!");
+  return;
+ }
+ if (game.balance < item.price) {
+  alert("Недостаточно средств!");
+  return;
+ }
+ if (game.inventory.length >= game.maxWarehouse) {
+  alert("Склад переполнен!");
+  return;
+ }
+
+ if (item.scam) {
+  game.balance -= item.price;
+  item.purchased = true;
+  const chat = game.chats.find(c => c.id === item.chatId);
+  if (chat) {
+   chat.messages.push({ sender: 'seller', text: "Ха-ха, спасибо за перевод! Деньги списаны, а продавец удалил аккаунт." });
+   chat.closed = true;
+  }
+  saveGame();
+  updateUI();
+  alert("⚠️ ВЫ ПОПАЛИСЬ НА СКАМ! Мошенники заблокировали вас и забрали деньги.");
+  closeChat();
+  return;
+ }
+
+ game.balance -= item.price;
+ item.purchased = true;
+
+ const chat = game.chats.find(c => c.id === item.chatId);
+ if (chat) {
+  chat.messages.push({ sender: 'seller', text: "Сделка прошла успешно! Товар ваш." });
+  chat.closed = true;
+ }
+
+ game.inventory.push({
+  ...item,
+  buyPrice: item.price,
+  prepCost: 0,
+  onSale: false,
+  sellPrice: 0,
+  sold: false,
+  buyerChatId: null
+ });
+
+ saveGame();
+ updateUI();
+ closeChat();
+ alert(`Успешно куплено: ${item.name}!`);
+}
+
+function openPrepModal(inventoryIndex) {
+ game.activePrepItemIndex = inventoryIndex;
+ const item = game.inventory[inventoryIndex];
+ document.getElementById('prep-item-title').innerText = `${item.name} (Куплено за ${item.buyPrice.toLocaleString()} ₽)`;
+ 
+ const suggestedPrice = Math.min(item.marketPrice, item.maxAllowedSellPrice);
+ document.getElementById('prep-sell-price').value = suggestedPrice;
+ document.getElementById('prep-sell-price').max = item.maxAllowedSellPrice;
+ document.getElementById('prep-max-limit').innerText = `Максимальный лимит для этого товара: ${item.maxAllowedSellPrice.toLocaleString()} ₽`;
+
+ document.getElementById('prep-clean').checked = false;
+ document.getElementById('prep-service').checked = false;
+
+ document.getElementById('label-prep-clean').innerText = `Чистка / Косметика (${item.cleanCost.toLocaleString()} ₽)`;
+ document.getElementById('label-prep-service').innerText = `Капитальный ремонт / Устранение дефекта (${item.serviceCost.toLocaleString()} ₽)`;
+ document.getElementById('prep-clean').value = item.cleanCost;
+ document.getElementById('prep-service').value = item.serviceCost;
+
+ document.getElementById('prep-modal').classList.remove('hidden');
+}
+
+function closePrepModal() {
+ document.getElementById('prep-modal').classList.add('hidden');
+ game.activePrepItemIndex = null;
+}
+
+function putOnSale() {
+ const item = game.inventory[game.activePrepItemIndex];
+ const cleanChecked = document.getElementById('prep-clean').checked;
+ const serviceChecked = document.getElementById('prep-service').checked;
+ const sellPriceInput = parseInt(document.getElementById('prep-sell-price').value);
+
+ if (isNaN(sellPriceInput) || sellPriceInput <= 0) {
+  alert("Введите корректную цену продажи!");
+  return;
+ }
+
+ if (sellPriceInput > item.maxAllowedSellPrice) {
+  alert(`Превышен лимит цены! Рынок не купит этот товар дороже ${item.maxAllowedSellPrice.toLocaleString()} ₽.`);
+  return;
+ }
+
+ let prepCost = 0;
+ if (cleanChecked) prepCost += item.cleanCost;
+ if (serviceChecked) prepCost += item.serviceCost;
+
+ if (game.balance < prepCost) {
+  alert(`Недостаточно средств на подготовку и ремонт (нужно ${prepCost.toLocaleString()} ₽)!`);
+  return;
+ }
+
+ game.balance -= prepCost;
+ item.prepCost = prepCost;
+ item.sellPrice = sellPriceInput;
+ item.onSale = true;
+
+ closePrepModal();
+ saveGame();
+ updateUI();
+ alert(`Товар выставлен на продажу за ${item.sellPrice.toLocaleString()} ₽!`);
+}
+
+function removeFromSale(inventoryIndex) {
+ const item = game.inventory[inventoryIndex];
+ item.onSale = false;
+ 
+ if (item.buyerChatId) {
+  const chat = game.chats.find(c => c.id === item.buyerChatId);
+  if (chat && !chat.closed) {
+   chat.messages.push({ sender: 'seller', text: "Продавец снял товар с продажи. Сделка отменяется." });
+   chat.closed = true;
+  }
+  item.buyerChatId = null;
+ }
+
+ saveGame();
+ updateUI();
+ alert("Товар снят с продажи и возвращен на склад!");
+}
+
+function upgradeWarehouse() {
+ const cost = game.maxWarehouse * 15000;
+ if (game.balance < cost) {
+  alert(`Нужно ${cost.toLocaleString()} ₽ для расширения склада!`);
+  return;
+ }
+ game.balance -= cost;
+ game.maxWarehouse += 5;
+ saveGame();
+ updateUI();
+ alert("Склад расширен!");
+}
+
+// Управление Админ-панелью и редактором кода
+function requestAdminPassword() {
+ const pass = prompt("Введите пароль администратора:");
+ if (pass === "161212") {
+  openAdminPanel();
+ } else if (pass !== null) {
+  alert("Неверный пароль!");
+ }
+}
+
+function openAdminPanel() {
+ document.getElementById('game-code-editor').value = document.documentElement.outerHTML;
+ document.getElementById('admin-modal').classList.remove('hidden');
+ switchAdminTab('cheats');
+}
+
+function closeAdminPanel() {
+ document.getElementById('admin-modal').classList.add('hidden');
+}
+
+function switchAdminTab(tab) {
+ const isCheats = tab === 'cheats';
+ document.getElementById('adm-tab-cheats').classList.toggle('hidden', !isCheats);
+ document.getElementById('adm-tab-code').classList.toggle('hidden', isCheats);
+ document.getElementById('adm-tab-btn-cheats').className = isCheats ? "flex-1 bg-indigo-600 text-white font-bold text-xs py-1.5 rounded-xl transition" : "flex-1 bg-slate-800 text-slate-300 font-bold text-xs py-1.5 rounded-xl transition";
+ document.getElementById('adm-tab-btn-code').className = !isCheats ? "flex-1 bg-indigo-600 text-white font-bold text-xs py-1.5 rounded-xl transition" : "flex-1 bg-slate-800 text-slate-300 font-bold text-xs py-1.5 rounded-xl transition";
+}
+
+function searchInCode() {
+ const query = document.getElementById('code-search-input').value.toLowerCase();
+ const textarea = document.getElementById('game-code-editor');
+ const text = textarea.value;
+ if (!query) return;
+ const index = text.toLowerCase().indexOf(query);
+ if (index !== -1) {
+  textarea.focus();
+  textarea.setSelectionRange(index, index + query.length);
+ }
+}
+
+function applyCodeChanges() {
+ const newCode = document.getElementById('game-code-editor').value;
+ if (confirm("Применить измененный код страницы? Страница перезагрузится.")) {
+  document.open();
+  document.write(newCode);
+  document.close();
+ }
+}
+
+function adminAddMoney(amount) {
+ game.balance += amount;
+ saveGame();
+ updateUI();
+ alert(`Админ: добавлено ${amount.toLocaleString()} ₽!`);
+}
+
+function adminSetTime(hour) {
+ game.timeHour = hour;
+ saveGame();
+ updateUI();
+ alert(`Админ: время установлено на ${hour}:00`);
+}
+
+function adminSpawnItem() {
+ const template = itemTemplates[Math.floor(Math.random() * itemTemplates.length)];
+ game.inventory.push({
+  name: template.name,
+  icon: template.icon,
+  buyPrice: Math.round(template.basePrice * 0.8),
+  marketPrice: template.marketPrice,
+  maxAllowedSellPrice: Math.round(template.marketPrice * 1.3),
+  prepCost: 0,
+  onSale: false,
+  sellPrice: 0,
+  sold: false,
+  buyerChatId: null,
+  cleanCost: Math.round(Math.max(300, template.basePrice * 0.03)),
+  serviceCost: Math.round(Math.max(1500, template.basePrice * 0.12)),
+  defect: template.defect || "Без дефектов"
+ });
+ saveGame();
+ updateUI();
+ alert(`Админ: товар «${template.name}» добавлен на склад!`);
+}
+
+function adminClearInventory() {
+ if (confirm("Очистить склад?")) {
+  game.inventory = [];
+  saveGame();
+  updateUI();
+  alert("Админ: склад очищен.");
+ }
+}
+
+function applyFilters() {
+ updateUI();
+}
+
+function resetFilters() {
+ document.getElementById('filter-min').value = '';
+ document.getElementById('filter-max').value = '';
+ updateUI();
+}
+
+function updateUI() {
+ document.getElementById('header-balance').innerText = game.balance.toLocaleString() + ' ₽';
+ document.getElementById('header-time').innerText = String(game.timeHour).padStart(2, '0') + ':00';
+ document.getElementById('header-day').innerText = `День ${game.day}`;
+ document.getElementById('profile-day').innerText = `День ${game.day}`;
+
+ const nightBtn = document.getElementById('night-btn');
+ if (game.timeHour >= 22) {
+  nightBtn.classList.remove('hidden');
+ } else {
+  nightBtn.classList.add('hidden');
+ }
+
+ document.getElementById('profile-rep').innerText = '⭐️ ' + game.reputation.toFixed(1);
+ document.getElementById('profile-deals').innerText = game.totalDeals;
+ document.getElementById('profile-profit').innerText = game.totalProfit.toLocaleString() + ' ₽';
+
+ document.getElementById('inv-count').innerText = game.inventory.length;
+ document.getElementById('inv-max').innerText = game.maxWarehouse;
+
+ // Склад больше не светится зеленым кружком
+ const badgeInv = document.getElementById('badge-inv');
+ if (badgeInv) badgeInv.classList.add('hidden');
+
+ // Зеленый кружок непрочитанных чатов теперь виден на кнопке «Чаты» в нижнем меню
+ const unreadChatsCount = game.chats.filter(c => !c.closed && c.unread).length;
+ const badgeChats = document.getElementById('badge-chats');
+ if (badgeChats) {
+  if (unreadChatsCount > 0) {
+   badgeChats.innerText = unreadChatsCount;
+   badgeChats.classList.remove('hidden');
+  } else {
+   badgeChats.classList.add('hidden');
+  }
+ }
+
+ const minPrice = parseInt(document.getElementById('filter-min').value) || 0;
+ const maxPrice = parseInt(document.getElementById('filter-max').value) || Infinity;
+
+ const filteredFeed = game.feed.filter(item => {
+  const matchCategory = game.currentCategory === 'all' || item.category === game.currentCategory;
+  const matchPrice = item.price >= minPrice && item.price <= maxPrice;
+  return matchCategory && matchPrice;
+ });
+
+ const feedList = document.getElementById('feed-list');
+ if (!filteredFeed || filteredFeed.length === 0) {
+  feedList.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">Объявлений не найдено.</p>`;
+ } else {
+  feedList.innerHTML = filteredFeed.map((item) => {
+   const originalIdx = game.feed.indexOf(item);
+   return `
+    <div class="live-card bg-slate-900 border border-slate-800 p-3.5 rounded-2xl flex items-center justify-between shadow-sm">
+     <div class="flex items-center space-x-3">
+      <div class="text-2xl bg-slate-800 p-2.5 rounded-xl shadow-inner">${item.icon}</div>
+      <div>
+       <h3 class="font-bold text-xs">${item.name}</h3>
+       <p class="text-[11px] text-[#34d399] font-semibold mt-0.5">${item.price.toLocaleString()} ₽</p>
+       <p class="text-[10px] text-slate-400 mt-0.5">Состояние: ${item.condition} • Прод: ${item.seller}</p>
+       ${item.purchased ? `<p class="text-[10px] text-amber-500 font-semibold mt-1">🔒 Закрыто</p>` : item.inspected ? `<p class="text-[10px] text-indigo-400 font-medium mt-1">🕵️ Проверено</p>` : ''}
+      </div>
+     </div>
+     <button onclick="startChat(${originalIdx})" class="${item.purchased ? 'bg-slate-800 text-slate-500' : 'bg-[#00AAFF] hover:bg-[#0092d6] text-slate-950 shadow-md shadow-[#00AAFF]/20'} font-bold text-xs px-3.5 py-2 rounded-xl transition whitespace-nowrap active:scale-95">${item.purchased ? 'Закрыто' : 'Написать'}</button>
+    </div>
+   `;
+  }).join('');
+ }
+
+ const invList = document.getElementById('inventory-list');
+ if (game.inventory.length === 0) {
+  invList.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">Склад пуст.</p>`;
+ } else {
+  invList.innerHTML = game.inventory.map((item, idx) => `
+   <div class="live-card bg-slate-900 border border-slate-800 p-3.5 rounded-2xl flex items-center justify-between shadow-sm">
+    <div class="flex items-center space-x-3">
+     <div class="text-2xl bg-slate-800 p-2.5 rounded-xl shadow-inner">${item.icon}</div>
+     <div>
+      <h3 class="font-bold text-xs">${item.name}</h3>
+      <p class="text-[11px] text-slate-400 mt-0.5">Куплено за: ${item.buyPrice.toLocaleString()} ₽</p>
+      ${item.onSale ? `<p class="text-[10px] text-amber-400 font-semibold mt-0.5">🏷️ Продажа за ${item.sellPrice.toLocaleString()} ₽</p>` : `<p class="text-[10px] text-indigo-400 font-medium mt-0.5">📦 На складе</p>`}
+     </div>
+    </div>
+    <div class="flex flex-col gap-1.5">
+     ${!item.onSale ? `<button onclick="openPrepModal(${idx})" class="bg-emerald-600 hover:bg-emerald-500 font-bold text-slate-950 text-xs px-3 py-1.5 rounded-xl transition whitespace-nowrap shadow-md shadow-emerald-600/20 active:scale-95">Подготовить</button>` : `<button onclick="removeFromSale(${idx})" class="bg-amber-600 hover:bg-amber-500 font-bold text-slate-950 text-xs px-3 py-1.5 rounded-xl transition whitespace-nowrap active:scale-95">Снять с продажи</button>`}
+    </div>
+   </div>
+  `).join('');
+ }
+
+ const chatsContainer = document.getElementById('chats-container');
+ if (game.chats.length === 0) {
+  chatsContainer.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">Активных диалогов нет.</p>`;
+ } else {
+  chatsContainer.innerHTML = game.chats.map(c => `
+   <div onclick="openChat('${c.id}')" class="live-card bg-slate-900 border ${c.pinned ? 'border-indigo-500/60' : 'border-slate-800'} p-3.5 rounded-2xl flex items-center justify-between cursor-pointer hover:border-slate-700 transition relative">
+    <div class="flex items-center space-x-3">
+     <div class="text-xl bg-slate-800 p-2 rounded-xl">${c.mode === 'selling' ? '💬' : '📞'}</div>
+     <div>
+      <h3 class="font-bold text-xs flex items-center gap-1.5">
+       ${c.seller} ${c.pinned ? '📌' : ''} 
+       ${c.unread && !c.closed ? '<span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>' : ''}
+      </h3>
+      <p class="text-[11px] text-slate-300 mt-0.5 truncate max-w-[180px]">${c.itemName} ${c.closed ? '🔒' : ''}</p>
+     </div>
+    </div>
+    <div class="flex items-center space-x-2">
+     <button onclick="togglePinChat('${c.id}', event)" class="text-[10px] bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded-lg text-slate-300">📌</button>
+     <button onclick="deleteChat('${c.id}', event)" class="text-[10px] bg-red-950/60 hover:bg-red-900 px-2 py-1 rounded-lg text-red-300">🗑️</button>
+    </div>
+   </div>
+  `).join('');
+ }
+
+ const historyList = document.getElementById('history-list');
+ if (game.history.length === 0) {
+  historyList.innerHTML = `<p class="text-xs text-slate-500">История пока пуста...</p>`;
+ } else {
+  historyList.innerHTML = game.history.map(h => `
+   <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-xl flex justify-between text-xs">
+    <span class="text-slate-300">${h.text} (День ${h.day})</span>
+    <span class="font-bold text-emerald-400">+${h.profit.toLocaleString()} ₽</span>
+   </div>
+  `).join('');
+ }
+}
+
+loadGame();
+</script>
+</body>
+</html>
